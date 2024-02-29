@@ -12,16 +12,20 @@
 #define SCRIPT_NAME	 "CategoryCodes.dms"
 #define DIMENSIONS_DSC "mrDataFileDsc"
 
-#define CHECK_MDD ".\P221633.mdd"
-#define CHECK_DATA ".\P221633.ddf"
+#if !defined(INP_NAME)
+	#define INP_NAME "R123456"
+#endif
 
-#define TEMP_OUT_MDD ".\Rtestout.mdd"
-#define TEMP_OUT_DATA ".\Rtestout.ddf"
+#define CHECK_MDD ""+INP_NAME+".mdd"
+#define CHECK_DATA ""+INP_NAME+".ddf"
+
+#define TEMP_OUT_MDD ""+INP_NAME+".del.mdd"
+#define TEMP_OUT_DATA ""+INP_NAME+".del.ddf"
 
 
 InputDatasource(Input)
 	ConnectionString = "Provider = mrOleDB.Provider.2; Data Source = " + DIMENSIONS_DSC + "; Initial Catalog = '" + CHECK_MDD + "'; Location = " + CHECK_DATA
-	SelectQuery = "SELECT * FROM VDATA WHERE true"
+	SelectQuery = "SELECT * FROM VDATA WHERE Respondent.Serial<100"
 End InputDatasource
 
 OutputDatasource(Output)
@@ -53,10 +57,11 @@ Event(OnJobStart, "Do the set up")
 	dim mdm
 	
 	set fso = CreateObject("Scripting.FileSystemObject")
-
+	
 	set mdm = CreateObject("MDM.Document")
-
+	
 	if not(fso.FileExists(MDDMAPPING_MDD)) then
+		debug.log("MDD for category mapping not found")
 		debug.echo("MDD for category mapping not found")
 		err.raise(-999,"MDD for category mapping not found")
 	else
@@ -71,8 +76,8 @@ Event(OnJobStart, "Do the set up")
 	Set fso = CreateObject("Scripting.FileSystemObject")
 	
 	If (fso.FileExists(ReportFileTxt_FileName)) Then
-        fso.DeleteFile(ReportFileTxt_FileName)
-    End If
+	    fso.DeleteFile(ReportFileTxt_FileName)
+	End If
 	
 	Set ReportFileTxt = fso.CreateTextFile(ReportFileTxt_FileName, True)
 	
@@ -100,6 +105,12 @@ End Event
 Event(OnAfterJobEnd)
 	Debug.Echo("Ending execution of " +SCRIPT_NAME + " at " + CText(Now()))
 	Debug.Log("Ending execution of " +SCRIPT_NAME)
+	Debug.Echo("Deleting output files")
+	Debug.Log("Deleting output files")
+    Dim fso
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    fso.DeleteFile(TEMP_OUT_MDD)
+    fso.DeleteFile(TEMP_OUT_DATA)
 End Event
 
 Event(OnNextCase,"")

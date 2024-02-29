@@ -2,6 +2,9 @@
 # *
 *.mdd
 *.ddf
+*.ddf-journal
+*.lmd
+MDDtmp*.mdd
 **/[Tt]est*
 report.*
 # Except this file
