@@ -25,7 +25,7 @@
 
 InputDatasource(Input)
 	ConnectionString = "Provider = mrOleDB.Provider.2; Data Source = " + DIMENSIONS_DSC + "; Initial Catalog = '" + CHECK_MDD + "'; Location = " + CHECK_DATA
-	SelectQuery = "SELECT * FROM VDATA WHERE Respondent.Serial<100"
+	SelectQuery = "SELECT * FROM VDATA WHERE true"
 End InputDatasource
 
 OutputDatasource(Output)
