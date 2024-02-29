@@ -1,0 +1,10 @@
+## Ignore everything in this directory
+# *
+*.mdd
+*.ddf
+**/[Tt]est*
+report.*
+# Except this file
+!.gitignore
+
+examples/

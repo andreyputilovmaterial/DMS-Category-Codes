@@ -1,0 +1,199 @@
+﻿' -----------------------------------------------------------------------
+' IPS Table Shell Version 7.0.1
+'
+' -----------------------------------------------------------------------
+' Take an MDD that was transformed using 601_SavPrep and export the data to a SAV
+'
+' -----------------------------------------------------------------------
+' Author Notes (optional):
+' -
+' -----------------------------------------------------------------------
+
+#define SCRIPT_NAME	 "CategoryCodes.dms"
+#define DIMENSIONS_DSC "mrDataFileDsc"
+
+#define CHECK_MDD ".\P221633.mdd"
+#define CHECK_DATA ".\P221633.ddf"
+
+#define TEMP_OUT_MDD ".\Rtestout.mdd"
+#define TEMP_OUT_DATA ".\Rtestout.ddf"
+
+
+InputDatasource(Input)
+	ConnectionString = "Provider = mrOleDB.Provider.2; Data Source = " + DIMENSIONS_DSC + "; Initial Catalog = '" + CHECK_MDD + "'; Location = " + CHECK_DATA
+	SelectQuery = "SELECT * FROM VDATA WHERE true"
+End InputDatasource
+
+OutputDatasource(Output)
+    ConnectionString = "Provider = mrOleDB.Provider.2; Data Source = " + DIMENSIONS_DSC + "; Location = " + TEMP_OUT_DATA + ";"
+    MetadataOutputName = TEMP_OUT_MDD
+End OutputDatasource
+
+' -----------------------------------------------------------------------
+
+Event(OnBeforeJobStart)
+	Debug.Echo("Beginning execution of " +SCRIPT_NAME + " at " + CText(now()))
+	Debug.Log("Beginning execution of " +SCRIPT_NAME)
+	Dim fso
+	Set fso = CreateObject("Scripting.FileSystemObject")
+	If (fso.FileExists(TEMP_OUT_MDD)) Then
+		fso.DeleteFile(TEMP_OUT_MDD)
+	End If
+	If (fso.FileExists(TEMP_OUT_DATA)) Then
+		fso.DeleteFile(TEMP_OUT_DATA)
+	End If
+End Event
+
+Event(OnJobStart, "Do the set up")
+	
+	'#define MDDMAPPING_MDD CHECK_MDD + ".map.mdd"
+	#define MDDMAPPING_MDD CHECK_MDD
+	
+	dim fso
+	dim mdm
+	
+	set fso = CreateObject("Scripting.FileSystemObject")
+
+	set mdm = CreateObject("MDM.Document")
+
+	if not(fso.FileExists(MDDMAPPING_MDD)) then
+		debug.echo("MDD for category mapping not found")
+		err.raise(-999,"MDD for category mapping not found")
+	else
+		mdm.Join(MDDMAPPING_MDD, "{..}", 1, BitOr(32, 16, 512))
+	end if
+	set DmgrGlobal.mdmmapping = mdm
+	
+	
+	dim ReportFileTxt, ReportFileTxt_FileName
+	
+	ReportFileTxt_FileName = "report.categorymap.log.txt"
+	Set fso = CreateObject("Scripting.FileSystemObject")
+	
+	If (fso.FileExists(ReportFileTxt_FileName)) Then
+        fso.DeleteFile(ReportFileTxt_FileName)
+    End If
+	
+	Set ReportFileTxt = fso.CreateTextFile(ReportFileTxt_FileName, True)
+	
+	set DmgrGlobal.ReportFileTxt = ReportFileTxt
+	
+	set DmgrGlobal.ReportDict = CreateObject("Scripting.Dictionary")
+	
+End Event
+
+Event(OnJobEnd)
+	
+	DmgrGlobal.mdmmapping.Close()
+	
+	dim iter
+	for each iter in DmgrGlobal.ReportDict
+		DmgrGlobal.ReportFileTxt.WriteLine(""+ctext(iter)+"="+ctext(DmgrGlobal.ReportDict.Item[iter])+"")
+	next
+	
+    DmgrGlobal.ReportFileTxt.Close()
+    
+    set DmgrGlobal.ReportDict = null
+	
+End Event
+
+Event(OnAfterJobEnd)
+	Debug.Echo("Ending execution of " +SCRIPT_NAME + " at " + CText(Now()))
+	Debug.Log("Ending execution of " +SCRIPT_NAME)
+End Event
+
+Event(OnNextCase,"")
+	
+	'// for example, if we are having issues producing spss
+	'// and it fails with category 1087 in KidInfo
+	'// then, we can print real category name(s)
+	dim mdm
+	
+	set mdm = DmgrGlobal.mdmmapping
+	
+	LoopThroughFields(dmgrjob.Questions,mdm.Fields,mdm,"Fields",DmgrGlobal.ReportDict)
+
+function cformatcat_mapping(cat,mdm)
+	
+	'dim r, part
+	'r = "<<BEGIN>>"
+	'for each part in {}+cat
+	'	r = r + "," + mdm.categorymap.valuetoname[clong(part)]
+	'next
+	'r = replace(r,"<<BEGIN>>,","")
+	'cformatcat_mapping = r
+	
+	cformatcat_mapping = mdm.categorymap.valuetoname[clong(cat)]
+	
+end function
+
+sub process_categorical_variable(q,qname,mdmmapping,report)
+	dim category_code, all_responses, category_name, dict_item_name
+	dim force_skip
+	force_skip = false
+	'if find(qname,"Fields.Respondent.")=0 then force_skip = true
+	'if find(qname,"Fields.DataCollection.")=0 then force_skip = true
+	'if find(qname,"Fields.DataCleaning.")=0 then force_skip = true
+	'force_skip = true
+	'if find(qname,"Fields.DV_Wave")=0 then force_skip = false
+	if not force_skip then
+		if q is not null then
+			all_responses = {} + q - q.DefinedCategories()
+			for each category_code in all_responses
+				dict_item_name = "" + ctext(qname) + ":" + ctext(clong(category_code))
+				if not report.Exists(dict_item_name) then
+					category_name = cformatcat_mapping( category_code, mdmmapping )
+					report.Add(dict_item_name,category_name)
+				end if
+			next
+		end if
+	end if
+end sub
+
+sub LoopThroughFields(DataFields,MDMFields,mdm,Path,Report)
+   dim DataField, MdmField, cat
+   for each MdmField in MDMFields
+      set DataField = DataFields[MdmField.Name]
+      Select Case MdmField.ObjectTypeValue
+         Case 0 ' Regular variable
+            'Run_ProcessMDMItem(Question,mdm,Path+"."+Question.Name,Report,Options)
+            if MdmField.DataType = '!dataTypeConstants.mtCategorical!'3 then
+            	'Run_LoopThroughCategories(Question,mdm,Path+"."+Question.Name,Report,Options)
+            	process_categorical_variable(DataField,Path+"."+MdMField.Name,mdm,Report)
+            end if
+         Case 1 'Array (Loop)
+         	'Run_ProcessMDMItem(Question,mdm,Path+"."+Question.Name,Report,Options)
+         	'Run_LoopThroughCategories(Question,mdm,Path+"."+Question.Name,Report,Options)
+         	for each cat in DataField.Categories
+	            LoopThroughFields(DataField[cat.name],MdmField.Fields,mdm,Path+"["+ctext(cat.name)+"]."+MdmField.Name,Report)
+         	next
+         	set cat = null
+         Case 2 'Grid (it seems it's something different than Array, but I can't understand their logic; maybe it's different because it has a different db setup in case data, I don't know)
+         	' Execute Error: The '<Object>.IGrid' type does not support the 'categories' property
+         	'Run_ProcessMDMItem(Question,mdm,Path+"."+Question.Name,Report,Options)
+         	'Run_LoopThroughElements(Question,mdm,Path+"."+Question.Name,Report,Options)
+         	for each cat in DataField.Categories
+	            LoopThroughFields(DataField[cat.name],MdmField.Fields,mdm,Path+"["+ctext(cat.name)+"]."+MdmField.Name,Report)
+         	next
+         	set cat = null
+         Case 3 ' Class (Block)
+         	'Run_ProcessMDMItem(Question,mdm,Path+"."+Question.Name,Report,Options)
+            LoopThroughFields(DataField,MdmField.Fields,mdm,Path+"."+MdmField.Name,Report)
+         case 16
+         	' not sure what is it, an example is Respondent.Serial
+            'Run_ProcessMDMItem(Question,mdm,Path+"."+Question.Name,Report,Options)
+            if MdmField.DataType = '!dataTypeConstants.mtCategorical!'3 then
+            	'Run_LoopThroughCategories(Question,mdm,Path+"."+Question.Name,Report,Options)
+            	process_categorical_variable(DataField,Path+"."+MdMField.Name,mdm,Report)
+            end if
+         Case else
+         	mdm.Close()
+         	'Report.Close()
+         	debug.echo("Other ObjectTypeValue: ("+ctext(MdmField.ObjectTypeValue)+") at question """+MdmField.name+"""")
+         	debug.log("Other ObjectTypeValue: ("+ctext(MdmField.ObjectTypeValue)+") at question """+MdmField.name+"""")
+            err.raise(-9999,"Other ObjectTypeValue: ("+ctext(MdmField.ObjectTypeValue)+") at question """+MdmField.name+"""")
+      end Select
+   Next
+end sub
+	
+End event
