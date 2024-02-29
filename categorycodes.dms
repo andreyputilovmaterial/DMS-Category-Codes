@@ -25,7 +25,7 @@
 
 InputDatasource(Input)
 	ConnectionString = "Provider = mrOleDB.Provider.2; Data Source = " + DIMENSIONS_DSC + "; Initial Catalog = '" + CHECK_MDD + "'; Location = " + CHECK_DATA
-	SelectQuery = "SELECT * FROM VDATA WHERE Respondent.Serial<100"
+	SelectQuery = "SELECT * FROM VDATA WHERE true"
 End InputDatasource
 
 OutputDatasource(Output)
@@ -176,7 +176,7 @@ sub LoopThroughFields(DataFields,MDMFields,mdm,Path,Report)
          	'Run_ProcessMDMItem(Question,mdm,Path+"."+Question.Name,Report,Options)
          	'Run_LoopThroughCategories(Question,mdm,Path+"."+Question.Name,Report,Options)
          	for each cat in DataField.Categories
-	            LoopThroughFields(DataField[cat.name],MdmField.Fields,mdm,Path+"["+ctext(cat.name)+"]."+MdmField.Name,Report)
+	            LoopThroughFields(DataField[cat.name],MdmField.Fields,mdm,Path+"."+MdmField.Name+"[{"+ctext(cat.name)+"}]",Report)
          	next
          	set cat = null
          Case 2 'Grid (it seems it's something different than Array, but I can't understand their logic; maybe it's different because it has a different db setup in case data, I don't know)
@@ -184,7 +184,7 @@ sub LoopThroughFields(DataFields,MDMFields,mdm,Path,Report)
          	'Run_ProcessMDMItem(Question,mdm,Path+"."+Question.Name,Report,Options)
          	'Run_LoopThroughElements(Question,mdm,Path+"."+Question.Name,Report,Options)
          	for each cat in DataField.Categories
-	            LoopThroughFields(DataField[cat.name],MdmField.Fields,mdm,Path+"["+ctext(cat.name)+"]."+MdmField.Name,Report)
+	            LoopThroughFields(DataField[cat.name],MdmField.Fields,mdm,Path+"."+MdmField.Name+"[{"+ctext(cat.name)+"}]",Report)
          	next
          	set cat = null
          Case 3 ' Class (Block)
