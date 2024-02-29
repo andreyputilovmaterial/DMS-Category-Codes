@@ -2,12 +2,14 @@
 
 A DMS script that helps you check data for ghost categories.
 
-Just add MDD & DDF file name at the top. As it's a DMS script, it needs output data source to write to. Just specify a random name (Rtestout.mdd by default), but you'll have to delete these files when processing finishes.
+Just add MDD & DDF file name at the top (or, better pass it as a param from BAT file or command line - see example below). Output files are the same with <code>.del</code> added, deleted in OnJobEnd.
 
 The output is saved in a text file <code>report.categorymap.log.txt</code>
 
 Example call:<br />
-<code>dmsrun categorycodes.dms /d"INP_NAME """"R221646"""""</code>
+<code>dmsrun categorycodes.dms /d"INP_NAME """"R221646"""""</code><br />
+or<br />
+<code>dmsrun categorycodes.dms /d"INP_NAME """"Data\R221646"""""</code>
 
 Example of outputs:
 <code>
