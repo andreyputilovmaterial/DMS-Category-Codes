@@ -1,10 +1,4 @@
 ﻿' -----------------------------------------------------------------------
-' IPS Table Shell Version 7.0.1
-'
-' -----------------------------------------------------------------------
-' Take an MDD that was transformed using 601_SavPrep and export the data to a SAV
-'
-' -----------------------------------------------------------------------
 ' Author Notes (optional):
 ' -
 ' -----------------------------------------------------------------------
@@ -29,8 +23,8 @@ InputDatasource(Input)
 End InputDatasource
 
 OutputDatasource(Output)
-    ConnectionString = "Provider = mrOleDB.Provider.2; Data Source = " + DIMENSIONS_DSC + "; Location = " + TEMP_OUT_DATA + ";"
-    MetadataOutputName = TEMP_OUT_MDD
+	ConnectionString = "Provider = mrOleDB.Provider.2; Data Source = " + DIMENSIONS_DSC + "; Location = " + TEMP_OUT_DATA + ";"
+	MetadataOutputName = TEMP_OUT_MDD
 End OutputDatasource
 
 ' -----------------------------------------------------------------------
@@ -76,7 +70,7 @@ Event(OnJobStart, "Do the set up")
 	Set fso = CreateObject("Scripting.FileSystemObject")
 	
 	If (fso.FileExists(ReportFileTxt_FileName)) Then
-	    fso.DeleteFile(ReportFileTxt_FileName)
+		fso.DeleteFile(ReportFileTxt_FileName)
 	End If
 	
 	Set ReportFileTxt = fso.CreateTextFile(ReportFileTxt_FileName, True)
@@ -96,9 +90,9 @@ Event(OnJobEnd)
 		DmgrGlobal.ReportFileTxt.WriteLine(""+ctext(iter)+"="+ctext(DmgrGlobal.ReportDict.Item[iter])+"")
 	next
 	
-    DmgrGlobal.ReportFileTxt.Close()
-    
-    set DmgrGlobal.ReportDict = null
+	DmgrGlobal.ReportFileTxt.Close()
+	
+	set DmgrGlobal.ReportDict = null
 	
 End Event
 
@@ -107,10 +101,10 @@ Event(OnAfterJobEnd)
 	Debug.Log("Ending execution of " +SCRIPT_NAME)
 	Debug.Echo("Deleting output files")
 	Debug.Log("Deleting output files")
-    Dim fso
-    Set fso = CreateObject("Scripting.FileSystemObject")
-    fso.DeleteFile(TEMP_OUT_MDD)
-    fso.DeleteFile(TEMP_OUT_DATA)
+	Dim fso
+	Set fso = CreateObject("Scripting.FileSystemObject")
+	fso.DeleteFile(TEMP_OUT_MDD)
+	fso.DeleteFile(TEMP_OUT_DATA)
 End Event
 
 Event(OnNextCase,"")
@@ -139,7 +133,7 @@ function cformatcat_mapping(cat,mdm)
 end function
 
 sub process_categorical_variable(q,qname,mdmmapping,report)
-	dim category_code, all_responses, category_name, dict_item_name
+	dim category_code, responses_ghost, category_name, dict_item_name
 	dim force_skip
 	force_skip = false
 	'if find(qname,"Fields.Respondent.")=0 then force_skip = true
@@ -149,8 +143,8 @@ sub process_categorical_variable(q,qname,mdmmapping,report)
 	'if find(qname,"Fields.DV_Wave")=0 then force_skip = false
 	if not force_skip then
 		if q is not null then
-			all_responses = {} + q - q.DefinedCategories()
-			for each category_code in all_responses
+			responses_ghost = {} + q - q.DefinedCategories()
+			for each category_code in responses_ghost
 				dict_item_name = "" + ctext(qname) + ":" + ctext(clong(category_code))
 				if not report.Exists(dict_item_name) then
 					category_name = cformatcat_mapping( category_code, mdmmapping )
@@ -162,49 +156,49 @@ sub process_categorical_variable(q,qname,mdmmapping,report)
 end sub
 
 sub LoopThroughFields(DataFields,MDMFields,mdm,Path,Report)
-   dim DataField, MdmField, cat
-   for each MdmField in MDMFields
-      set DataField = DataFields[MdmField.Name]
-      Select Case MdmField.ObjectTypeValue
-         Case 0 ' Regular variable
-            'Run_ProcessMDMItem(Question,mdm,Path+"."+Question.Name,Report,Options)
-            if MdmField.DataType = '!dataTypeConstants.mtCategorical!'3 then
-            	'Run_LoopThroughCategories(Question,mdm,Path+"."+Question.Name,Report,Options)
-            	process_categorical_variable(DataField,Path+"."+MdMField.Name,mdm,Report)
-            end if
-         Case 1 'Array (Loop)
-         	'Run_ProcessMDMItem(Question,mdm,Path+"."+Question.Name,Report,Options)
-         	'Run_LoopThroughCategories(Question,mdm,Path+"."+Question.Name,Report,Options)
-         	for each cat in DataField.Categories
-	            LoopThroughFields(DataField[cat.name],MdmField.Fields,mdm,Path+"."+MdmField.Name+"[{"+ctext(cat.name)+"}]",Report)
-         	next
-         	set cat = null
-         Case 2 'Grid (it seems it's something different than Array, but I can't understand their logic; maybe it's different because it has a different db setup in case data, I don't know)
-         	' Execute Error: The '<Object>.IGrid' type does not support the 'categories' property
-         	'Run_ProcessMDMItem(Question,mdm,Path+"."+Question.Name,Report,Options)
-         	'Run_LoopThroughElements(Question,mdm,Path+"."+Question.Name,Report,Options)
-         	for each cat in DataField.Categories
-	            LoopThroughFields(DataField[cat.name],MdmField.Fields,mdm,Path+"."+MdmField.Name+"[{"+ctext(cat.name)+"}]",Report)
-         	next
-         	set cat = null
-         Case 3 ' Class (Block)
-         	'Run_ProcessMDMItem(Question,mdm,Path+"."+Question.Name,Report,Options)
-            LoopThroughFields(DataField,MdmField.Fields,mdm,Path+"."+MdmField.Name,Report)
-         case 16
-         	' not sure what is it, an example is Respondent.Serial
-            'Run_ProcessMDMItem(Question,mdm,Path+"."+Question.Name,Report,Options)
-            if MdmField.DataType = '!dataTypeConstants.mtCategorical!'3 then
-            	'Run_LoopThroughCategories(Question,mdm,Path+"."+Question.Name,Report,Options)
-            	process_categorical_variable(DataField,Path+"."+MdMField.Name,mdm,Report)
-            end if
-         Case else
-         	mdm.Close()
-         	'Report.Close()
-         	debug.echo("Other ObjectTypeValue: ("+ctext(MdmField.ObjectTypeValue)+") at question """+MdmField.name+"""")
-         	debug.log("Other ObjectTypeValue: ("+ctext(MdmField.ObjectTypeValue)+") at question """+MdmField.name+"""")
-            err.raise(-9999,"Other ObjectTypeValue: ("+ctext(MdmField.ObjectTypeValue)+") at question """+MdmField.name+"""")
-      end Select
-   Next
+	dim DataField, MdmField, cat
+	for each MdmField in MDMFields
+		set DataField = DataFields[MdmField.Name]
+		select case MdmField.ObjectTypeValue
+			case 0 ' Regular variable
+				'Run_ProcessMDMItem(Question,mdm,Path+"."+Question.Name,Report,Options)
+				if MdmField.DataType = '!dataTypeConstants.mtCategorical!'3 then
+					'Run_LoopThroughCategories(Question,mdm,Path+"."+Question.Name,Report,Options)
+					process_categorical_variable(DataField,Path+"."+MdMField.Name,mdm,Report)
+				end if
+			case 1 'Array (Loop)
+				'Run_ProcessMDMItem(Question,mdm,Path+"."+Question.Name,Report,Options)
+				'Run_LoopThroughCategories(Question,mdm,Path+"."+Question.Name,Report,Options)
+				for each cat in DataField.Categories
+					LoopThroughFields(DataField[cat.name],MdmField.Fields,mdm,Path+"."+MdmField.Name+"[{"+ctext(cat.name)+"}]",Report)
+				next
+				set cat = null
+			case 2 'Grid (it seems it's something different than Array, but I can't understand their logic; maybe it's different because it has a different db setup in case data, I don't know)
+				' Execute Error: The '<Object>.IGrid' type does not support the 'categories' property
+				'Run_ProcessMDMItem(Question,mdm,Path+"."+Question.Name,Report,Options)
+				'Run_LoopThroughElements(Question,mdm,Path+"."+Question.Name,Report,Options)
+				for each cat in DataField.Categories
+					LoopThroughFields(DataField[cat.name],MdmField.Fields,mdm,Path+"."+MdmField.Name+"[{"+ctext(cat.name)+"}]",Report)
+				next
+				set cat = null
+			case 3 ' Class (Block)
+				'Run_ProcessMDMItem(Question,mdm,Path+"."+Question.Name,Report,Options)
+				LoopThroughFields(DataField,MdmField.Fields,mdm,Path+"."+MdmField.Name,Report)
+			case 16
+				' not sure what is it, an example is Respondent.Serial
+				'Run_ProcessMDMItem(Question,mdm,Path+"."+Question.Name,Report,Options)
+				if MdmField.DataType = '!dataTypeConstants.mtCategorical!'3 then
+					'Run_LoopThroughCategories(Question,mdm,Path+"."+Question.Name,Report,Options)
+					process_categorical_variable(DataField,Path+"."+MdMField.Name,mdm,Report)
+				end if
+			case else
+			mdm.Close()
+			'Report.Close()
+			debug.echo("Other ObjectTypeValue: ("+ctext(MdmField.ObjectTypeValue)+") at question """+MdmField.name+"""")
+			debug.log("Other ObjectTypeValue: ("+ctext(MdmField.ObjectTypeValue)+") at question """+MdmField.name+"""")
+			err.raise(-9999,"Other ObjectTypeValue: ("+ctext(MdmField.ObjectTypeValue)+") at question """+MdmField.name+"""")
+		end select
+	Next
 end sub
-	
+
 End event
